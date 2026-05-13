@@ -21,8 +21,7 @@ _CRYPTO_MODE = os.environ.get("CRYPTO_MODE", "").lower() == "true"
 if _CRYPTO_MODE:
     IMPORTANT_METRICS = [
         "IC",
-        "annualized_return",
-        "max_drawdown",
+        "l2.valid",
     ]
 else:
     IMPORTANT_METRICS = [
@@ -49,14 +48,22 @@ def process_results(current_result, sota_result):
     combined_df = pd.concat([current_df, sota_df], axis=1)
 
     # Filter the combined DataFrame to retain only the important metrics
-    filtered_combined_df = combined_df.loc[IMPORTANT_METRICS]
+    # Use available metrics only (some may be missing in baseline results)
+    available_metrics = [m for m in IMPORTANT_METRICS if m in combined_df.index]
+    if not available_metrics:
+        return "No important metrics available in backtest results."
+
+    filtered_combined_df = combined_df.loc[available_metrics]
 
     def format_filtered_combined_df(filtered_combined_df: pd.DataFrame) -> str:
         results = []
         for metric, row in filtered_combined_df.iterrows():
             current = row["Current Result"]
             sota = row["SOTA Result"]
-            results.append(f"{metric} of Current Result is {current:.6f}, of SOTA Result is {sota:.6f}")
+            try:
+                results.append(f"{metric} of Current Result is {current:.6f}, of SOTA Result is {sota:.6f}")
+            except (ValueError, TypeError):
+                results.append(f"{metric} of Current Result is {current}, of SOTA Result is {sota}")
         return "; ".join(results)
 
     return format_filtered_combined_df(filtered_combined_df)

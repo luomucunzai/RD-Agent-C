@@ -89,13 +89,12 @@ class QlibFactorRunner(CachedRunner[QlibFactorExperiment]):
         # Data path stays as default ~/.qlib/qlib_data/cn_data (crypto replaces stock data)
         if os.environ.get("CRYPTO_MODE", "").lower() == "true":
             env_to_use.update({
-                "region": os.environ.get("CRYPTO_REGION", "global"),
                 "market": os.environ.get("CRYPTO_MARKET", "all"),
                 "benchmark": os.environ.get("CRYPTO_BENCHMARK", "BTCUSDT"),
                 "ann_scaler": os.environ.get("CRYPTO_ANN_SCALER", "365"),
                 "topk": os.environ.get("CRYPTO_TOPK", "10"),
                 "account": os.environ.get("CRYPTO_ACCOUNT", "10000"),
-                "limit_threshold": os.environ.get("CRYPTO_LIMIT_THRESHOLD", "0"),
+                "limit_threshold": "1.0",  # no price limits for crypto (100% = no limit)
                 "open_cost": os.environ.get("CRYPTO_OPEN_COST", "0.0005"),
                 "close_cost": os.environ.get("CRYPTO_CLOSE_COST", "0.0005"),
                 "min_cost": os.environ.get("CRYPTO_MIN_COST", "0"),

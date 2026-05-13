@@ -97,9 +97,11 @@ def trim_text_for_embedding(text: str, model: str, max_tokens: Optional[int] = N
 
     try:
         # Use encode/decode approach for precise truncation
-        enc_ids = encode(model=model, text=text)
+        # Strip provider prefix (e.g., "litellm_proxy/BAAI/bge" -> "BAAI/bge")
+        encode_model = model.split("/", 1)[-1] if "/" in model else model
+        enc_ids = encode(model=encode_model, text=text)
         enc_ids_trunc = enc_ids[:safe_max_tokens]
-        text_trunc = decode(model=model, tokens=enc_ids_trunc)
+        text_trunc = decode(model=encode_model, tokens=enc_ids_trunc)
         # Ensure we return a string type (mypy type safety)
         text_trunc = str(text_trunc) if text_trunc is not None else ""
 

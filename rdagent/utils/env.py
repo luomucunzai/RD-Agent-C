@@ -750,13 +750,23 @@ class CondaConf(LocalConf):
         This is called during initialization and can be called again after prepare()
         to ensure bin_path is set correctly even if the conda env was just created.
         """
+        # Try conda run first
         conda_path_result = subprocess.run(
             f"conda run -n {self.conda_env_name} --no-capture-output env | grep '^PATH='",
             capture_output=True,
             text=True,
             shell=True,
         )
-        self.bin_path = conda_path_result.stdout.strip().split("=")[1] if conda_path_result.returncode == 0 else ""
+        if conda_path_result.returncode == 0:
+            self.bin_path = conda_path_result.stdout.strip().split("=")[1] if conda_path_result.returncode == 0 else ""
+        else:
+            # Fallback: try to find conda env by common paths
+            import sys as _sys
+            conda_prefix = os.environ.get("CONDA_PREFIX", "")
+            if conda_prefix:
+                self.bin_path = os.path.join(conda_prefix, "bin")
+            else:
+                self.bin_path = os.path.join(os.path.dirname(os.path.dirname(_sys.executable)), "bin")
 
 
 class MLECondaConf(CondaConf):
@@ -830,7 +840,7 @@ class DockerConf(EnvConf):
 
 
 class QlibCondaConf(CondaConf):
-    conda_env_name: str = "rdagent4qlib"
+    conda_env_name: str = os.environ.get("CONDA_DEFAULT_ENV", "rdagent4qlib")
     enable_cache: bool = False
     default_entry: str = "qrun conf.yaml"
     # extra_volumes: dict = {str(Path("~/.qlib/").expanduser().resolve().absolute()): "/root/.qlib/"}

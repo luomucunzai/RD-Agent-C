@@ -767,20 +767,17 @@ with st.sidebar:
     c1, c2 = st.columns([1, 1], vertical_alignment="center")
     with c1:
         if st.button(":green[**All Loops**]", use_container_width=True):
-            if not state.fs:
-                refresh()
+            refresh()
             get_msgs_until(lambda m: False)
         if st.button("**Reset**", use_container_width=True):
             refresh(same_trace=True)
     with c2:
         if st.button(":green[Next Loop]", use_container_width=True):
-            if not state.fs:
-                refresh()
+            refresh()
             get_msgs_until(lambda m: "feedback" in m.tag and "evolving feedback" not in m.tag)
 
         if st.button("Next Step", use_container_width=True):
-            if not state.fs:
-                refresh()
+            refresh()
             get_msgs_until(lambda m: "evolving feedback" in m.tag)
 
     with st.popover(":orange[**Config⚙️**]", use_container_width=True):
