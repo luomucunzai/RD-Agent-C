@@ -139,9 +139,11 @@ def main():
     args = parser.parse_args()
 
     if args.h5 is None:
-        candidate = Path(__file__).parent / "daily_pv_all.h5"
-        if candidate.exists():
-            h5_path = candidate
+        for _name in ["daily_pv_all.h5", "daily_pv_debug.h5"]:
+            _candidate = Path(__file__).parent / _name
+            if _candidate.exists():
+                h5_path = _candidate
+                break
         else:
             print("[ERROR] H5 file not found. Specify with --h5 or run generate_crypto.py first.")
             sys.exit(1)
