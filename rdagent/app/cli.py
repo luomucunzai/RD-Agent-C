@@ -21,19 +21,6 @@ from typing import Optional
 import typer
 from typing_extensions import Annotated
 
-from rdagent.app.data_science.loop import main as data_science
-from rdagent.app.finetune.llm.loop import main as llm_finetune
-from rdagent.app.general_model.general_model import (
-    extract_models_and_implement as general_model,
-)
-from rdagent.app.qlib_rd_loop.factor import main as fin_factor
-from rdagent.app.qlib_rd_loop.factor_from_report import main as fin_factor_report
-from rdagent.app.qlib_rd_loop.model import main as fin_model
-from rdagent.app.qlib_rd_loop.quant import main as fin_quant
-from rdagent.app.utils.health_check import health_check
-from rdagent.app.utils.info import collect_info
-from rdagent.log.mle_summary import grade_summary as grade_summary
-
 app = typer.Typer()
 
 CheckoutOption = Annotated[bool, typer.Option("--checkout/--no-checkout", "-c/-C")]
@@ -87,6 +74,8 @@ def fin_factor_cli(
     all_duration: Optional[str] = None,
     checkout: CheckoutOption = True,
 ):
+    from rdagent.app.qlib_rd_loop.factor import main as fin_factor
+
     fin_factor(path=path, step_n=step_n, loop_n=loop_n, all_duration=all_duration, checkout=checkout)
 
 
@@ -98,6 +87,8 @@ def fin_model_cli(
     all_duration: Optional[str] = None,
     checkout: CheckoutOption = True,
 ):
+    from rdagent.app.qlib_rd_loop.model import main as fin_model
+
     fin_model(path=path, step_n=step_n, loop_n=loop_n, all_duration=all_duration, checkout=checkout)
 
 
@@ -109,6 +100,8 @@ def fin_quant_cli(
     all_duration: Optional[str] = None,
     checkout: CheckoutOption = True,
 ):
+    from rdagent.app.qlib_rd_loop.quant import main as fin_quant
+
     fin_quant(path=path, step_n=step_n, loop_n=loop_n, all_duration=all_duration, checkout=checkout)
 
 
@@ -119,11 +112,15 @@ def fin_factor_report_cli(
     all_duration: Optional[str] = None,
     checkout: CheckoutOption = True,
 ):
+    from rdagent.app.qlib_rd_loop.factor_from_report import main as fin_factor_report
+
     fin_factor_report(report_folder=report_folder, path=path, all_duration=all_duration, checkout=checkout)
 
 
 @app.command(name="general_model")
 def general_model_cli(report_file_path: str):
+    from rdagent.app.general_model.general_model import extract_models_and_implement as general_model
+
     general_model(report_file_path)
 
 
@@ -136,6 +133,8 @@ def data_science_cli(
     timeout: Optional[str] = None,
     competition: Optional[str] = None,
 ):
+    from rdagent.app.data_science.loop import main as data_science
+
     data_science(
         path=path,
         checkout=checkout,
@@ -159,6 +158,8 @@ def llm_finetune_cli(
     loop_n: Optional[int] = None,
     timeout: Optional[str] = None,
 ):
+    from rdagent.app.finetune.llm.loop import main as llm_finetune
+
     llm_finetune(
         path=path,
         checkout=checkout,
@@ -175,6 +176,8 @@ def llm_finetune_cli(
 
 @app.command(name="grade_summary")
 def grade_summary_cli(log_folder: str):
+    from rdagent.log.mle_summary import grade_summary as grade_summary
+
     grade_summary(log_folder)
 
 
@@ -188,11 +191,15 @@ def health_check_cli(
     check_docker: CheckDockerOption = True,
     check_ports: CheckPortsOption = True,
 ):
+    from rdagent.app.utils.health_check import health_check
+
     health_check(check_env=check_env, check_docker=check_docker, check_ports=check_ports)
 
 
 @app.command(name="collect_info")
 def collect_info_cli():
+    from rdagent.app.utils.info import collect_info
+
     collect_info()
 
 
