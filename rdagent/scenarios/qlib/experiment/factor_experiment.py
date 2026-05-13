@@ -103,6 +103,9 @@ The simulator user can use to test your factor:
 """
 
     def get_runtime_environment(self):
-        factor_env = get_factor_env()
-        stdout = get_runtime_environment_by_env(env=factor_env)
-        return stdout
+        try:
+            factor_env = get_factor_env()
+            stdout = get_runtime_environment_by_env(env=factor_env)
+            return stdout
+        except Exception:
+            return '{"runtime_info": "unavailable (non-conda environment)"}'

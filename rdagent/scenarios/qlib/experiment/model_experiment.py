@@ -91,6 +91,9 @@ The simulator user can use to test your model:
 """
 
     def get_runtime_environment(self):
-        model_env = get_model_env()
-        stdout = get_runtime_environment_by_env(env=model_env)
-        return stdout
+        try:
+            model_env = get_model_env()
+            stdout = get_runtime_environment_by_env(env=model_env)
+            return stdout
+        except Exception:
+            return '{"runtime_info": "unavailable (non-conda environment)"}'

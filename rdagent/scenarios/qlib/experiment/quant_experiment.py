@@ -190,22 +190,27 @@ class QlibQuantScenario(Scenario):
     def get_runtime_environment(self, tag: str = None) -> str:
         assert tag in [None, "factor", "model"]
 
+        _fallback = '{"runtime_info": "unavailable (non-conda environment)"}'
+
         if tag is None or tag == "factor":
-            # Use factor env to get the runtime environment
             factor_env = get_factor_env()
-            factor_stdout = get_runtime_environment_by_env(env=factor_env)
+            try:
+                factor_stdout = get_runtime_environment_by_env(env=factor_env)
+            except Exception:
+                factor_stdout = _fallback
             if tag == "factor":
                 stdout = factor_stdout
 
         if tag is None or tag == "model":
-            # Use model env to get the runtime environment
             model_env = get_model_env()
-            model_stdout = get_runtime_environment_by_env(env=model_env)
+            try:
+                model_stdout = get_runtime_environment_by_env(env=model_env)
+            except Exception:
+                model_stdout = _fallback
             if tag == "model":
                 stdout = model_stdout
 
         if tag is None:
-            # Combine the outputs from both environments
             stdout = (
                 "=== [Environment to generate the factors] ===\n"
                 + factor_stdout.strip()
