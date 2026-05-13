@@ -24,7 +24,7 @@ from rdagent.core.scenario import Scenario
 from rdagent.core.utils import import_class
 from rdagent.log import rdagent_logger as logger
 from rdagent.scenarios.qlib.proposal.quant_proposal import QuantTrace
-from rdagent.utils.qlib import ALPHA20
+from rdagent.utils.qlib import get_base_factors
 
 
 class QuantRDLoop(RDLoop):
@@ -65,7 +65,7 @@ class QuantRDLoop(RDLoop):
         logger.log_object(self.model_summarizer, tag="model summarizer")
 
         self.plan: ExperimentPlan = {
-            "features": ALPHA20,
+            "features": get_base_factors(),
             "feature_codes": {},
         }  # for user interaction
         self.trace = QuantTrace(scen=scen)

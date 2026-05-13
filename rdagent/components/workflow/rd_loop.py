@@ -24,7 +24,7 @@ from rdagent.core.proposal import (
 from rdagent.core.scenario import Scenario
 from rdagent.core.utils import import_class
 from rdagent.log import rdagent_logger as logger
-from rdagent.utils.qlib import ALPHA20, validate_qlib_features
+from rdagent.utils.qlib import get_base_factors, validate_qlib_features
 from rdagent.utils.workflow import LoopBase, LoopMeta
 
 
@@ -42,7 +42,7 @@ class RDLoop(LoopBase, metaclass=LoopMeta):
         )
 
         self.plan: ExperimentPlan = {
-            "features": ALPHA20,
+            "features": get_base_factors(),
             "feature_codes": {},
         }  # for user interaction
 
