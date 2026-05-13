@@ -1,10 +1,11 @@
 import os
+import sys
 from typing import Optional
 
 from pydantic_settings import SettingsConfigDict
 
 from rdagent.components.coder.CoSTEER.config import CoSTEERSettings
-from rdagent.utils.env import CondaConf, Env, LocalEnv
+from rdagent.utils.env import CondaConf, Env, LocalConf, LocalEnv
 
 
 class FactorCoSTEERSettings(CoSTEERSettings):
@@ -36,8 +37,14 @@ def get_factor_env(
     enable_cache: Optional[bool] = None,
 ) -> Env:
     conf = FactorCoSTEERSettings()
-    if hasattr(conf, "python_bin"):
-        env = LocalEnv(conf=(CondaConf(conda_env_name=os.environ.get("CONDA_DEFAULT_ENV"))))
+    conda_env = os.environ.get("CONDA_DEFAULT_ENV")
+    if conda_env:
+        env = LocalEnv(conf=(CondaConf(conda_env_name=conda_env)))
+    else:
+        # Fallback for venv: use LocalConf with the current python's bin path
+        venv_bin = os.path.join(os.path.dirname(sys.executable))
+        local_conf = LocalConf(bin_path=venv_bin, default_entry="python main.py")
+        env = LocalEnv(conf=local_conf)
     env.conf.extra_volumes = extra_volumes.copy()
     env.conf.running_timeout_period = running_timeout_period
     if enable_cache is not None:
