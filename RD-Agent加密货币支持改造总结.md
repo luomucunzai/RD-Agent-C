@@ -245,3 +245,143 @@ Qlib 回测输出的 `qlib_res.csv` 包含以下可用指标：
 - `1day.excess_return_with_cost.max_drawdown`（最大回撤）
 
 `IMPORTANT_METRICS` 必须匹配实际输出，否则 `combined_df.loc[...]` 会 KeyError。
+
+---
+
+## 环境配置踩坑总结
+
+### 服务器初始状态
+
+Ubuntu 22.04 裸机，只有 Python 3.10，**没有 pip、没有 conda、没有 sudo 权限**（需要密码）。
+
+### 1️⃣ pip 安装
+
+```bash
+# ❌ 错误：pip3 不存在
+pip3 install xxx
+
+# ✅ 正确：先装 pip
+# 没 sudo 时用 get-pip.py
+wget https://bootstrap.pypa.io/get-pip.py
+python3 get-pip.py --user
+
+# 有 sudo 时
+sudo apt install python3-pip -y
+```
+
+**坑：** `python3 -m ensurepip` 在 Ubuntu 裸机上不存在。
+
+### 2️⃣ 虚拟环境创建
+
+```bash
+# ❌ 错误：python3 -m venv 报错
+python3 -m venv myenv
+# → The virtual environment was not created successfully because ensurepip is not available
+
+# ✅ 正确：先装 python3-venv
+sudo apt install python3.10-venv -y
+python3 -m venv myenv
+```
+
+**坑：** 依赖 `python3-venv` 系统包，需要 sudo。
+
+### 3️⃣ conda vs venv 选择
+
+| 场景 | 推荐 | 原因 |
+|------|------|------|
+| 因子生成+代码执行 | ✅ **venv** | 轻量，依赖可控 |
+| Qlib 回测（qrun） | ✅ **conda** | 需要 conda 子进程运行 qrun |
+| 模型代码执行（PyTorch） | ✅ **conda** | 需要 GPU 依赖管理 |
+
+**坑：** RD-Agent 的 `QlibCondaEnv` 硬编码了 `conda` 命令，Qlib 回测只能走 conda。venv 只能跑因子生成+代码执行，跑不了回测。
+
+### 4️⃣ conda 安装
+
+```bash
+# 安装 Miniconda
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh -b -p ~/miniconda3
+
+# 创建环境
+~/miniconda3/bin/conda create -n rdagent python=3.10 -y
+
+# ⚠ 2026年起需要接受 ToS
+~/miniconda3/bin/conda tos accept --channel https://repo.anaconda.com/pkgs/main
+```
+
+**坑：** 2026 年起 Anaconda 需要接受 Terms of Service。
+
+### 5️⃣ Qlib 回测环境
+
+```bash
+# 在 conda 环境中
+conda activate rdagent
+pip install pyqlib
+
+# 验证 qrun 可用
+which qrun  # → ~/miniconda3/envs/rdagent/bin/qrun
+```
+
+**关键配置：** `QlibCondaConf` 默认 conda 环境名是 `rdagent4qlib`。修改方式：
+- 方式 A：设置 `CONDA_DEFAULT_ENV=rdagent`（推荐，已在 `env.py` 中 fallback）
+- 方式 B：修改 `env.py` 中 `QlibCondaConf.conda_env_name` 的默认值
+
+### 6️⃣ protobuf 版本冲突
+
+```bash
+# ❌ qlib.init() 报错
+qlib.init(provider_uri="~/.qlib/qlib_data/cn_data")
+# → TypeError: Descriptors cannot be created directly.
+# → ModuleNotFoundError: No module named 'opentelemetry'
+# → ModuleNotFoundError: No module named 'fastapi'
+
+# ✅ 解决方法
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+# 或 pip install 'protobuf<4'
+```
+
+**根因：** `qlib.init()` 触发 mlflow 导入，mlflow 依赖大量包（opentelemetry、fastapi、databricks-sdk 等），protobuf 版本与 opentelemetry 不兼容。
+
+### 7️⃣ PATH 问题
+
+```bash
+# 在 conda 环境中运行 Python
+export PATH=$HOME/miniconda3/envs/rdagent/bin:$PATH
+
+# 在 conda 环境中运行 conda 命令
+# conda 在 ~/miniconda3/bin/conda，不在 envs/rdagent/bin/ 下
+export PATH=$HOME/miniconda3/bin:$PATH  # 也要加这个
+
+# 完整的运行命令
+export PATH=$HOME/miniconda3/envs/rdagent/bin:$HOME/miniconda3/bin:$PATH
+export CONDA_DEFAULT_ENV=rdagent
+export CONDA_PREFIX=$HOME/miniconda3/envs/rdagent
+```
+
+**坑：** `CondaConf._update_bin_path()` 需要 `conda` 命令在 PATH 中，但只设了 `envs/rdagent/bin` 没有设 `miniconda3/bin`。已在 `env.py` 中添加 `CONDA_PREFIX` fallback。
+
+### 8️⃣ 运行模式
+
+| 环境变量 | 值 | 说明 |
+|---------|-----|------|
+| `CRYPTO_MODE` | `true` | 启用加密货币模式 |
+| `MODEL_CoSTEER_env_type` | `local` | 模型代码在 venv/conda 中直接执行 |
+| `PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION` | `python` | 绕过 protobuf 版本冲突 |
+| `EMBEDDING_MAX_LENGTH` | `4000` | 控制 embedding 文本截断（bge-m3 用默认即可） |
+| `FACTOR_CoSTEER_max_loop` | `2` | 控制因子演化迭代次数（默认 10，测试时可减小） |
+| `CONDA_DEFAULT_ENV` | `rdagent` | 告诉 QlibCondaConf 用哪个 conda 环境 |
+
+### 9️⃣ 常见错误速查
+
+| 错误 | 原因 | 解决 |
+|------|------|------|
+| `timeout: failed to run command 'python'` | PATH 没包含 venv/conda 的 bin | 设 `PATH` 或用 `LocalConf(bin_path=...)` |
+| `timeout: failed to run command 'qrun'` | `QlibCondaEnv` 找不到 qrun | 用 conda 环境 + `CONDA_DEFAULT_ENV` |
+| `KeyError: 'global'` | Qlib 不认识 `region=global` | 不要传 region，或用默认 `cn` |
+| `This type of 'limit_threshold' is not supported` | `limit_threshold=""` 空字符串 | 设为数值 `1.0` |
+| `IndexError: index 717 out of bounds` | 标签计算超出数据边界 | 减少 test_end，留出 10+ 天余量 |
+| `['annualized_return', 'max_drawdown'] not in index` | 指标名不匹配 | 在 `IMPORTANT_METRICS` 中用实际存在的指标 |
+| `Embedding failed even after truncation` | 模型 token 限制太小 | 换 `BAAI/bge-m3` 或更大的模型 |
+| `No module named 'xxx'` | 缺依赖 | `pip install xxx`，不要 `--no-deps` |
+| `Descriptors cannot be created directly` | protobuf 版本冲突 | `export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python` |
+| `st.session_state has no attribute "excluded_tags"` | Streamlit UI session state 未初始化 | 在 `should_display()` 前加 `state.excluded_tags = ["llm_messages"]` |
