@@ -154,9 +154,49 @@ print(fs.data[:5])  # 查看前 5 个值
 
 - **SSH 免密登录**：`ssh-copy-id` 或手动追加公钥到 `~/.ssh/authorized_keys`
 - **Python 版本**：3.10 最稳定（3.14 有依赖兼容问题）
-- **运行模式**：`env_type=conda`（默认），不需要 Docker
+- **运行模式**：不要再设 `env_type=conda`（默认），需要时设 `MODEL_CoSTEER_env_type=local`（见下文）
 - **Embedding**：DeepSeek 不支持 → 用 SiliconFlow 的 `BAAI/bge-large-en-v1.5`
 - **LiteLLM 兼容**：`litellm_proxy/` 前缀的 embedding 模型需要绕过 LiteLLM 直接调用 OpenAI 客户端
+
+### 6️⃣ 运行环境踩坑（venv 非 conda）
+
+| 问题 | 错误做法 | 正确做法 |
+|------|---------|---------|
+| **factor env** | `get_factor_env()` 硬编码 `CondaConf` | 增加 venv fallback：检测不到 conda 时用 `LocalConf(bin_path=venv_bin)` |
+| **model env** | `get_model_env()` 只支持 docker/conda | 增加 `local` 模式，同上 |
+| **model execute** | `ModelFBWorkspace.execute()` 硬编码 env 类型 | 增加 `local` 分支，用 `LocalEnv(LocalConf(...))` |
+| **python 找不到** | subprocess 里 `python: not found` | 设 `local` 模式或 conda 环境下运行 |
+| **CONDA_DEFAULT_ENV** | venv 中此变量为空 | 检测为空时自动降级为 `LocalEnv` |
+| **`rdagent --help`** | 加载全部场景导致依赖冲突 | 直接调用 `from rdagent.app.qlib_rd_loop.factor import main` |
+| **`fin_model` 缺 torch** | 找不到 torch | `pip install torch` 或跳过模型场景 |
+
+**解决路径：**
+```
+场景初始化 → get_runtime_environment()
+    → 失败：mock runtime 跳过（测试用）
+    → 根治：修 get_factor_env() / get_model_env() 支持 venv
+因子执行 → FACTOR_CoSTEER_python_bin
+模型执行 → MODEL_CoSTEER_env_type=local
+回测执行 → Qlib Conda/Docker（暂未在 venv 中验证）
+```
+
+### 7️⃣ 测试验证结果
+
+| 场景 | 命令 | 状态 | 费用 | 生成的因子/模型 |
+|------|------|------|------|----------------|
+| 因子挖掘 | `fin_factor` | ✅ **通过** | ~$0.005 | Volatility_10d（10日波动率） |
+| 因子+模型联合 | `fin_quant` | ✅ **通过** | ~$0.003 | momentum_10d（10日动量） |
+| 模型进化 | `fin_model` | ⚠️ 需装 torch | — | SimpleGRU（代码正确，执行缺 torch） |
+
+**核心链路全部验证通过的项目：**
+- ✅ 币安数据下载（downdata.py）→ CSV
+- ✅ CSV → H5（generate_crypto.py，$factor=1.0）
+- ✅ H5 → Qlib 原生 bin（convert_to_qlib_format.py，float32）
+- ✅ Qlib 数据读取（D.features()）
+- ✅ LLM 因子生成（DeepSeek Chat）
+- ✅ 因子代码本地执行（读取 crypto H5）
+- ✅ 因子结果评估（shape/code/value 三层）
+- ✅ RAG 知识库存储（SiliconFlow Embedding）
 
 ---
 

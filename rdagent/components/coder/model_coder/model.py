@@ -1,5 +1,7 @@
+import os
 import pickle
 import site
+import sys
 import traceback
 from pathlib import Path
 from typing import Dict, Optional
@@ -9,7 +11,7 @@ from rdagent.components.coder.model_coder.conf import MODEL_COSTEER_SETTINGS
 from rdagent.core.experiment import Experiment, FBWorkspace
 from rdagent.core.utils import cache_with_pickle
 from rdagent.oai.llm_utils import md5_hash
-from rdagent.utils.env import KGDockerEnv, QlibCondaConf, QlibCondaEnv, QTDockerEnv
+from rdagent.utils.env import KGDockerEnv, LocalConf, LocalEnv, QlibCondaConf, QlibCondaEnv, QTDockerEnv
 
 
 class ModelTask(CoSTEERTask):
@@ -118,6 +120,9 @@ class ModelFBWorkspace(FBWorkspace):
                     qtde = QTDockerEnv()
                 elif MODEL_COSTEER_SETTINGS.env_type == "conda":
                     qtde = QlibCondaEnv(conf=QlibCondaConf())
+                elif MODEL_COSTEER_SETTINGS.env_type == "local":
+                    venv_bin = os.path.join(os.path.dirname(sys.executable))
+                    qtde = LocalEnv(conf=LocalConf(bin_path=venv_bin, default_entry="python main.py"))
                 else:
                     raise ValueError(f"Unknown env_type: {MODEL_COSTEER_SETTINGS.env_type}")
             else:
