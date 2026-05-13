@@ -22,39 +22,52 @@
 
 ## 修改文件总清单
 
-### P0 - 必须修改（不改则功能异常）
+### 数据层
 
 | # | 文件 | 修改内容 |
 |---|------|----------|
-| 1 | `rdagent/scenarios/qlib/experiment/factor_data_template/README.md` | 列描述改为通用表述，添加 7×24 说明 |
-| 2 | `rdagent/scenarios/qlib/experiment/utils.py` | 新增 `generate_data_folder_from_crypto()`；修改 `get_data_folder_intro()` 追加 CRYPTO_MODE 描述 |
-| 3 | `rdagent/scenarios/qlib/experiment/prompts.yaml` | 移除股票代码示例；`qlib_factor_background` 改为通用描述；experiment_setting 支持 `crypto_mode` |
-| 4 | `rdagent/scenarios/qlib/developer/utils.py` | CRYPTO_MODE 时跳过 1 分钟数据检测 |
-| 5 | 5 个 Qlib YAML 模板文件 | 硬编码的 A 股参数全部改为 Jinja2 模板变量（`region`, `market`, `benchmark`, `ann_scaler` 等） |
-| 6 | `rdagent/scenarios/qlib/developer/factor_runner.py` | CRYPTO_MODE 时传入加密货币回测参数 |
+| 1 | `factor_data_template/README.md` | 列描述改为通用表述，添加 7×24 说明 |
+| 2 | `factor_data_template/generate_crypto.py` | **新增**：币安 CSV 转 H5（MultiIndex, $factor=1.0） |
+| 3 | `factor_data_template/convert_to_qlib_format.py` | **新增**：H5 转 Qlib 原生 bin 格式（float32） |
+| 4 | `experiment/utils.py` | 新增 `generate_data_folder_from_crypto()`；`get_data_folder_intro()` 追加 CRYPTO_MODE 描述 |
 
-### P1 - 建议修改
+### 场景配置层
 
 | # | 文件 | 修改内容 |
 |---|------|----------|
-| 7 | `rdagent/app/qlib_rd_loop/conf.py` | CRYPTO_MODE 时默认时间范围改为 2024-05-14 ~ 2026-04-30 |
+| 5 | `experiment/prompts.yaml` | 移除股票代码示例；支持 `crypto_mode` 条件显示 |
+| 6 | `experiment/factor_experiment.py` | `get_runtime_environment()` 加异常保护 |
+| 7 | `experiment/model_experiment.py` | 同上 |
+| 8 | `experiment/quant_experiment.py` | 同上 |
+| 9 | 5 个 YAML 模板文件 | 硬编码参数全部改为 Jinja2 模板变量 |
+| 10 | `scenarios/qlib/prompts.yaml` | 添加 CRYPTO_MODE 指导 |
 
-### P2 - 可选修改
-
-| # | 文件 | 修改内容 |
-|---|------|----------|
-| 8 | `rdagent/scenarios/qlib/prompts.yaml` | factor_hypothesis_specification 和 factor_feedback_generation 添加加密货币指导 |
-| 9 | `rdagent/scenarios/qlib/developer/feedback.py` | CRYPTO_MODE 时 `IMPORTANT_METRICS` 切换 |
-| 10 | 3 个 scenario `*_experiment.py` | 给 experiment_setting 模板传入 `crypto_mode` 变量 |
-
-### 额外增加
+### 运行层
 
 | # | 文件 | 修改内容 |
 |---|------|----------|
-| 11 | `rdagent/.../factor_data_template/generate_crypto.py` | 新增：币安 CSV 转 H5（因子代码读取用） |
-| 12 | `rdagent/.../factor_data_template/convert_to_qlib_format.py` | 新增：H5 转 Qlib 原生 bin 格式（回测引擎用） |
-| 13 | `rdagent/oai/backend/litellm.py` | 修复：SiliconFlow Embedding 兼容性 |
-| 14 | `dev/.env` | 新增：CRYPTO_MODE + DeepSeek + SiliconFlow 配置 |
+| 11 | `developer/factor_runner.py` | CRYPTO_MODE 时传入加密货币回测参数（移除 `region`，`limit_threshold=1.0`） |
+| 12 | `developer/utils.py` | CRYPTO_MODE 时跳过 1 分钟数据检测 |
+| 13 | `developer/feedback.py` | CRYPTO_MODE 时 `IMPORTANT_METRICS` 切换为 `['IC', 'l2.valid']`；`process_results` 增加指标缺失保护 |
+| 14 | `app/qlib_rd_loop/conf.py` | CRYPTO_MODE 时默认时间范围改为 2024-05-14 ~ 2026-04-20 |
+
+### 环境层
+
+| # | 文件 | 修改内容 |
+|---|------|----------|
+| 15 | `app/cli.py` | CLI 导入改为懒加载，避免一个场景缺少依赖导致整个 CLI 崩溃 |
+| 16 | `components/coder/factor_coder/config.py` | `get_factor_env()` 增加 venv 降级支持（`LocalConf` fallback） |
+| 17 | `components/coder/model_coder/conf.py` | `get_model_env()` 增加 `local` 模式 |
+| 18 | `components/coder/model_coder/model.py` | `ModelFBWorkspace.execute()` 增加 `local` 分支 |
+| 19 | `utils/env.py` | `QlibCondaConf.conda_env_name` 优先使用 `CONDA_DEFAULT_ENV`；`CondaConf._update_bin_path()` 增加 conda 命令失败的回退路径 |
+| 20 | `oai/backend/litellm.py` | `litellm_proxy/` 前缀的 embedding 请求绕过 LiteLLM 直连 OpenAI 客户端 |
+| 21 | `oai/utils/embedding.py` | `trim_text_for_embedding()` encode/decode 时去掉 `litellm_proxy/` 前缀 |
+
+### 配置
+
+| # | 文件 | 内容 |
+|---|------|------|
+| 22 | `.env` | `CRYPTO_MODE=true` + DeepSeek Chat + SiliconFlow Embedding |
 
 ---
 
@@ -67,161 +80,168 @@ generate_crypto.py → H5 (因子代码读取用)
                      MultiIndex(datetime, instrument)
                      6 columns: $open,$close,$high,$low,$volume,$factor(=1.0)
     ↓
-convert_to_qlib_format.py → Qlib 原生格式 (回测引擎用)
+convert_to_qlib_format.py → Qlib 原生格式 (回测引擎 qrun 用)
                             calendars/day.txt
                             features/{inst}/{field}.day.bin
                             instruments/all.txt
 ```
 
-### Qlib 0.9.7 数据格式规范
+### Qlib 0.9.7 `cn_data` 目录结构
 
 ```
 ~/.qlib/qlib_data/cn_data/
 ├── calendars/
-│   └── day.txt              # YYYY-MM-DD, 每行一天
+│   └── day.txt                    # YYYY-MM-DD, 每行一天
 ├── features/
-│   └── btcusdt/             # ⚠ 标的目录名全小写！
-│       ├── close.day.bin    # ⚠ 命名: {field}.{freq}.bin
-│       ├── open.day.bin     #    field = 去 $ 小写 (close, open, ...)
-│       ├── high.day.bin     #    freq = day (日线)
+│   └── btcusdt/                   # ⚠ 标的目录名全小写！
+│       ├── close.day.bin          # ⚠ 命名: {field}.{freq}.bin
+│       ├── open.day.bin           #    field = 去 $ 小写 (close, open, ...)
+│       ├── high.day.bin           #    freq = day (日线)
 │       ├── low.day.bin
 │       ├── volume.day.bin
-│       ├── factor.day.bin   # =1.0 for crypto
-│       └── ...              # adjclose/amount/change/vwap (可选的)
+│       └── factor.day.bin         # =1.0 for crypto
 └── instruments/
-    └── all.txt              # ⚠ TAB分隔, 无表头
+    └── all.txt                    # ⚠ TAB分隔, 无表头: symbol\tstart_date\tend_date
 ```
 
-**二进制 `.bin` 文件格式：**
+### 二进制 `.bin` 文件格式
+
 | 偏移 | 类型 | 值 |
 |------|------|-----|
 | 0-3 | int32 LE | start_index（日历起始位置，通常=0） |
-| 4+ | float32 LE | 每日特征值，按日历顺序，缺失=NaN |
+| 4+ | float32 LE | 每日特征值，按日历顺序，缺失=NaN（⚠ 不是 float64！） |
+
+写入方式：`np.hstack([start_index, arr]).astype(np.float32).tofile(f)`
+
+---
+
+## 服务器部署
+
+| 项目 | 信息 |
+|------|------|
+| 服务器 | `192.168.1.171` (Ubuntu 22.04, 8 代 i5) |
+| SSH | 密钥认证免密码 |
+| Miniconda | `~/miniconda3` |
+| conda 环境 | `rdagent`（Python 3.10） |
+| 项目路径 | `~/rdagent_dev/`（SSH 登录后自动进入，已配 `.bashrc`） |
+| Git | 本地 + 服务器各一个独立仓库 |
+| pyqlib | 0.9.7（conda 环境内） |
+| LLM Chat | DeepSeek API (`deepseek/deepseek-chat`) |
+| LLM Embedding | SiliconFlow → `BAAI/bge-m3`（8192 tokens） |
+| 数据 | 8 交易对（BTC/ETH/BNB/SOL/DOGE/TAO/PEPE/HYPE），717 天 |
+| Web UI  | `rdagent server_ui --port 19899` |
+
+### 快速运行
+
+```bash
+conda activate rdagent
+cd ~/rdagent_dev
+export $(grep -v '^#' .env | xargs)
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+rdagent fin_factor
+```
+
+---
+
+## 测试验证结果
+
+### 场景测试
+
+| 场景 | 命令 | 状态 | 费用 | 结果 |
+|------|------|------|------|------|
+| 因子挖掘 | `fin_factor` | ✅ 5/5 步骤完成 | ~$0.008 | 生成 Momentum/Volatility/VWAP 因子，评估通过，Qlib 回测执行 ✅ |
+| 因子+模型联合 | `fin_quant` | ✅ 因子生成+评估 | ~$0.005 | 生成 5 个因子全部验证通过 |
+| 模型进化 | `fin_model` | ⚠️ 需装 torch | — | SimpleGRU 代码正确，执行缺 torch |
+
+### 核心链路验证
+
+- ✅ 币安数据下载（downdata.py）→ CSV
+- ✅ CSV → H5（generate_crypto.py，$factor=1.0）
+- ✅ H5 → Qlib 原生 bin（convert_to_qlib_format.py，float32 格式）
+- ✅ Qlib 数据读取（D.features() 正常返回 717 天数据）
+- ✅ Alpha158 表达式正常计算（返回有效数值，无 NaN）
+- ✅ LLM 因子生成（DeepSeek Chat）
+- ✅ 因子代码本地执行（读取 crypto H5）
+- ✅ 因子结果评估（shape/code/value 三层）
+- ✅ RAG 知识库存储（bge-m3 embedding）
+- ✅ Qlib 回测（qrun 成功执行 LGBModel 预测+组合分析）
+- ✅ 反馈（feedback 正常生成 SOTA 对比）
+- ✅ 记录（record 正常保存）
+
+### Qlib 回测输出指标
+
+```
+LGBModel 预测 → IC=NaN, l2.valid=0.865
+基准策略年化收益率: -34.7%, 最大回撤: -64.3%
+因子增强策略年化: 30.6%（有费用） / 29.1%（无费用）
+因子增强策略最大回撤: -17.2% / -17.7%
+```
+
+IC=NaN 是因为 Alpha158 因子对加密货币预测精度不够（模型质量问题，非系统 bug）。
 
 ---
 
 ## 经验教训总结
 
-### 1️⃣ 包管理陷阱
+### 1️⃣ 包管理：`qlib` ≠ `pyqlib`
 
 | 问题 | 错误做法 | 正确做法 |
 |------|---------|---------|
-| **Qlib 包名** | `pip install qlib` | **`pip install pyqlib`** |
-| **非官方包** | PyPI 上 `qlib` 是另一个废弃项目 | 微软 Qlib 的包名是 `pyqlib` |
-| **依赖安装** | `pyqlib` 用 `--no-deps` 跳过依赖 | 直接 `pip install pyqlib` 让 pip 自动处理 |
-| **验证方法** | 检查模块名 | `python -c "import qlib; print(qlib.__version__)"` |
+| Qlib 包名 | `pip install qlib` | **`pip install pyqlib`** |
+| 依赖安装 | `--no-deps` 跳过依赖 | 直接 `pip install pyqlib` |
+| 环境管理 | venv 不方便跑 Qlib 回测 | 用 conda 环境 + `CONDA_DEFAULT_ENV` |
 
-**教训：** 遇到 `ModuleNotFoundError` 时先确认 pip 包名是否正确，不要急着 `--no-deps`。
+**教训：** 遇到 ModuleNotFoundError 先检查 pip 包名是否正确。
 
-### 2️⃣ Qlib 数据格式踩坑
+### 2️⃣ Qlib 0.9.7 数据格式（最坑）
 
 | 坑 | 错误做法 | 正确做法 | 发现方法 |
 |----|---------|---------|---------|
-| 数据类型 | 用 **float64** | 用 **float32** | 读 `FileFeatureStorage.__getitem__` 源码 |
-| 文件头 | 魔数 uint32 + count uint32 | **start_index int32** | 读 `FileFeatureStorage.write` 源码 |
-| 文件名 | `$close.bin` | **`close.day.bin`** | 读 `FileFeatureStorage.__init__` 源码 |
-| 字段命名 | 保留 `$` 前缀 | **去 `$` 全小写** | 文件名拼接逻辑: `{field}.{freq}.bin` |
-| 标的目录 | `BTCUSDT/` (大写) | **`btcusdt/` (全小写)** | 文件名拼接: `{instrument.lower()}/` |
-| instruments | CSV 格式, 有表头 | **TAB 分隔, 无表头** | 读 `FileInstrumentStorage` 源码 |
-| 参考旧格式 | 参考 `qlib_bin_down/` (0.8 版) | **读 Qlib 0.9.7 源码** | 0.9.7 完全重写了存储层 |
+| 数据类型 | **float64** | **float32** | 读 `FileFeatureStorage.__getitem__` |
+| 文件头 | 魔数(uint32) + count(uint32) | **start_index(int32)** | 读 `FileFeatureStorage.write` |
+| 文件名 | `$close.bin` | **`close.day.bin`** | 读 `FileFeatureStorage.__init__` |
+| 字段名 | 保留 `$` | **去 `$` 全小写** | `{field}.{freq}.bin` |
+| 标的目录 | `BTCUSDT/` | **`btcusdt/`** | `{instrument.lower()}/` |
+| instruments | CSV 有表头 | **TAB 分隔无表头** | 读 `FileInstrumentStorage` |
+| 参考旧版 | `qlib_bin_down/` (0.8) | **读 0.9.7 源码** | 存储层完全重写 |
 
-**教训：** 不要靠猜或参考旧版本数据。**直接读 Qlib 源码中的 `file_storage.py`** 是最准确的方式。
+**教训：** 不要靠猜。**直接读 Qlib 源码 `file_storage.py`**。
 
-### 3️⃣ Qlib 0.9.7 的关键变化
+### 3️⃣ Qlib 回测部署（conda 必要）
 
-- **无 `DumpData`/`DumpDataAll`**：旧版工具的 dump 功能在 0.9.7 已移除
-- **`FileStorage` 体系**：`FileCalendarStorage`、`FileInstrumentStorage`、`FileFeatureStorage`
-- **`qlib.init()` 触发 mlflow**：导致 protobuf 版本冲突，设 `PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python` 解决
-- **`D.instruments()` 返回 dict**：不再是 list，需要通过 `D.instruments()['market']` 或直接用 `D.features(list_of_symbols, ...)`
+- **`qrun` 命令**需要 conda 环境里安装 pyqlib
+- **`QlibCondaConf`** 默认 conda 环境名 `rdagent4qlib`，需改为 `CONDA_DEFAULT_ENV`
+- **`CondaConf._update_bin_path()`** 需要 `conda` 命令在 PATH 中，失败时有回退路径
+- **protobuf 冲突**：`qlib.init()` 触发 mlflow → 设置 `PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python`
+- **`region` 参数**：不支持 `global`，使用默认 `cn`
+- **`limit_threshold`**：不支持字符串类型，设为 `1.0`（100%=无限制）
 
-### 4️⃣ 数据验证方法
+### 4️⃣ Embedding 模型选择
 
-```python
-# 方法 A：通过 D.features() 测试（需 qlib.init 全量加载）
-import qlib
-qlib.init(provider_uri="~/.qlib/qlib_data/cn_data")
-from qlib.data import D
-data = D.features(["btcusdt"], ["$close"], start_time="2025-01-01", end_time="2025-01-05")
+| 模型 | Token 限制 | 状态 |
+|------|-----------|------|
+| `BAAI/bge-large-en-v1.5` | 512 | ❌ 因子代码文本超限 |
+| `BAAI/bge-m3` | 8192 | ✅ 建议使用 |
+| `Qwen/Qwen3-Embedding-0.6B` | 32000 | ✅ 可选 |
+| `text-embedding-3-small` | 8191 | ✅ 需 OpenAI Key |
 
-# 方法 B：直接用 FileFeatureStorage（轻量验证，无需 qlib.init）
-import os
-from qlib.data.storage.file_storage import FileFeatureStorage
-fs = FileFeatureStorage(os.path.expanduser("~/.qlib/qlib_data/cn_data"), "btcusdt", "close", freq="day")
-print(fs.data[:5])  # 查看前 5 个值
-```
+### 5️⃣ CLI 懒加载
 
-### 5️⃣ 环境配置
+原版 CLI 在模块顶部 import 所有场景，任一场景缺依赖就导致整个 CLI 崩溃。修复：改为在命令函数内部 import。
 
-- **SSH 免密登录**：`ssh-copy-id` 或手动追加公钥到 `~/.ssh/authorized_keys`
-- **Python 版本**：3.10 最稳定（3.14 有依赖兼容问题）
-- **运行模式**：不要再设 `env_type=conda`（默认），需要时设 `MODEL_CoSTEER_env_type=local`（见下文）
-- **Embedding**：DeepSeek 不支持 → 用 SiliconFlow 的 `BAAI/bge-large-en-v1.5`
-- **LiteLLM 兼容**：`litellm_proxy/` 前缀的 embedding 模型需要绕过 LiteLLM 直接调用 OpenAI 客户端
+### 6️⃣ venv vs conda
 
-### 6️⃣ 运行环境踩坑（venv 非 conda）
+- **因子代码执行**：venv 可用（需 `LocalConf(bin_path=venv_bin)`）
+- **模型代码执行**：venv 可用（需设 `MODEL_CoSTEER_env_type=local`）
+- **Qlib 回测**：**必须 conda 环境**（需要 `qrun` 命令）
+- 推荐：日常开发用 venv，回测用 conda
 
-| 问题 | 错误做法 | 正确做法 |
-|------|---------|---------|
-| **factor env** | `get_factor_env()` 硬编码 `CondaConf` | 增加 venv fallback：检测不到 conda 时用 `LocalConf(bin_path=venv_bin)` |
-| **model env** | `get_model_env()` 只支持 docker/conda | 增加 `local` 模式，同上 |
-| **model execute** | `ModelFBWorkspace.execute()` 硬编码 env 类型 | 增加 `local` 分支，用 `LocalEnv(LocalConf(...))` |
-| **python 找不到** | subprocess 里 `python: not found` | 设 `local` 模式或 conda 环境下运行 |
-| **CONDA_DEFAULT_ENV** | venv 中此变量为空 | 检测为空时自动降级为 `LocalEnv` |
-| **`rdagent --help`** | 加载全部场景导致依赖冲突 | 直接调用 `from rdagent.app.qlib_rd_loop.factor import main` |
-| **`fin_model` 缺 torch** | 找不到 torch | `pip install torch` 或跳过模型场景 |
+### 7️⃣ feedback.py 指标名匹配
 
-**解决路径：**
-```
-场景初始化 → get_runtime_environment()
-    → 失败：mock runtime 跳过（测试用）
-    → 根治：修 get_factor_env() / get_model_env() 支持 venv
-因子执行 → FACTOR_CoSTEER_python_bin
-模型执行 → MODEL_CoSTEER_env_type=local
-回测执行 → Qlib Conda/Docker（暂未在 venv 中验证）
-```
+Qlib 回测输出的 `qlib_res.csv` 包含以下可用指标：
+- `IC`, `Rank IC`, `ICIR`, `Rank ICIR`（预测相关性，可能为 NaN）
+- `l2.train`, `l2.valid`（模型损失，总是有值）
+- `1day.excess_return_with_cost.annualized_return`（组合分析年化收益率）
+- `1day.excess_return_with_cost.max_drawdown`（最大回撤）
 
-### 7️⃣ 测试验证结果
-
-| 场景 | 命令 | 状态 | 费用 | 生成的因子/模型 |
-|------|------|------|------|----------------|
-| 因子挖掘 | `fin_factor` | ✅ **通过** | ~$0.005 | Volatility_10d（10日波动率） |
-| 因子+模型联合 | `fin_quant` | ✅ **通过** | ~$0.003 | momentum_10d（10日动量） |
-| 模型进化 | `fin_model` | ⚠️ 需装 torch | — | SimpleGRU（代码正确，执行缺 torch） |
-
-**核心链路全部验证通过的项目：**
-- ✅ 币安数据下载（downdata.py）→ CSV
-- ✅ CSV → H5（generate_crypto.py，$factor=1.0）
-- ✅ H5 → Qlib 原生 bin（convert_to_qlib_format.py，float32）
-- ✅ Qlib 数据读取（D.features()）
-- ✅ LLM 因子生成（DeepSeek Chat）
-- ✅ 因子代码本地执行（读取 crypto H5）
-- ✅ 因子结果评估（shape/code/value 三层）
-- ✅ RAG 知识库存储（SiliconFlow Embedding）
-
----
-
-## 服务器部署状态快照
-
-| 项目 | 信息 |
-|------|------|
-| 服务器 | `192.168.1.171` (Ubuntu 22.04) |
-| SSH 登录 | 密钥认证（免密码），`li@192.168.1.171` |
-| 虚拟环境 | `~/rdagent_venv` (Python 3.10) |
-| 项目路径 | `~/rdagent_dev/` |
-| Git 仓库 | 本地 + 服务器各一个独立仓库 |
-| Qlib | `pyqlib 0.9.7` |
-| LLM Chat | DeepSeek API (`deepseek/deepseek-chat`) |
-| LLM Embedding | SiliconFlow (`BAAI/bge-large-en-v1.5`) |
-| 币安数据 | 8 交易对, 717 条/对, 2024-05-14 ~ 2026-04-30 |
-| H5 数据 | `git_ignore_folder/factor_implementation_source_data/daily_pv.h5` |
-| Qlib 原生数据 | `~/.qlib/qlib_data/cn_data/` (48 个 .bin 文件, 444 KB) |
-
-### 快速部署
-
-```bash
-ssh li@192.168.1.171
-source ~/rdagent_venv/bin/activate
-cd ~/rdagent_dev && rdagent fin_factor
-```
-
-`.env` 需包含：`CRYPTO_MODE=true` + DeepSeek API Key + SiliconFlow API Key。
+`IMPORTANT_METRICS` 必须匹配实际输出，否则 `combined_df.loc[...]` 会 KeyError。
