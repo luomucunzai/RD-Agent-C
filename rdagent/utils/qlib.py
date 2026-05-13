@@ -1,12 +1,15 @@
 """
-Qlib factor definitions for stock (Alpha158) and cryptocurrency markets.
+Qlib factor definitions — auto-selects between Alpha158 (stock) and CryptoAlpha (crypto).
 
-CRYPTO_MODE=true uses CRYPTO_ALPHA factors adapted for 7x24 continuous trading:
-- Shorter windows (max 30 days, crypto changes faster than stocks)
-- No $vwap (not available in crypto OHLCV data)
-- Log returns instead of simple returns for better normality
-- Volume factors adapted for crypto's extreme volume ranges
+CRYPTO_MODE=true  → uses CRYPTO_20 / CRYPTO_ALPHA from crypto_alpha.py
+CRYPTO_MODE=false → uses ALPHA20 / ALPHA158 (original A-share)
+
+For comparing results, see:
+    crypto_alpha.py  — cryptocurrency-adapted factors
+    qlib.py          — original Alpha158 (A-share)
 """
+
+import os as _os
 
 ALPHA20 = {
     "RESI5": "Resi($close, 5)/$close",
@@ -192,159 +195,8 @@ ALPHA158 = {
     "VSUMD60": "(Sum(Greater($volume-Ref($volume, 1), 0), 60)-Sum(Greater(Ref($volume, 1)-$volume, 0), 60))/(Sum(Abs($volume-Ref($volume, 1)), 60)+1e-12)",
 }
 
+from rdagent.utils.crypto_alpha import CRYPTO_20, CRYPTO_ALPHA
 
-# ============================================================
-# Crypto-adapted factors (used when CRYPTO_MODE=true)
-# Adaptations vs Alpha158:
-# - No $vwap (not in crypto data), replaced with OHLC-based price position
-# - Shorter max window: 30 days (crypto changes faster, 60d is too slow)
-# - Added 3-day short-term windows for crypto's faster signals
-# - Returns use Log for better normality in crypto's volatile regime
-# - Volume factors use Log scale (crypto volume spans many orders of magnitude)
-# - Label: single-period forward return (faster signal for crypto's 24h cycle)
-# ============================================================
-
-CRYPTO_ALPHA = {
-    # --- K-line Pattern (adapted, no $vwap) ---
-    "CKMID": "($close-$open)/$open",                           # Same as KMID
-    "CKLEN": "($high-$low)/$open",                              # Same as KLEN
-    "CKMID2": "($close-$open)/($high-$low+1e-12)",             # Same as KMID2
-    "CKUP": "($high-Greater($open, $close))/$open",             # Same as KUP
-    "CKLOW": "(Less($open, $close)-$low)/$open",                # Same as KLOW
-    "CKSFT": "(2*$close-$high-$low)/$open",                     # Same as KSFT
-    "COPEN0": "$open/$close",                                    # Same as OPEN0
-    "CHIGH0": "$high/$close",                                    # Same as HIGH0
-    "CLOW0": "$low/$close",                                      # Same as LOW0
-    "CPOS": "(2*$close-$high-$low)/($high-$low+1e-12)",         # Price position (replaces VWAP0)
-
-    # --- Short-term Momentum (3-15 days, crypto moves fast) ---
-    "CROC3": "Ref($close, 3)/$close",                           # 3-day momentum (new, crypto short-term)
-    "CROC5": "Ref($close, 5)/$close",                           # 5-day momentum
-    "CROC10": "Ref($close, 10)/$close",                         # 10-day momentum
-    "CROC15": "Ref($close, 15)/$close",                         # 15-day momentum (new)
-    "CROC21": "Ref($close, 21)/$close",                         # 21-day = ~3 weeks
-
-    # --- Log Return Momentum (better for crypto's log-normal distribution) ---
-    "CLRET3": "Log($close/Ref($close, 3))",                     # 3d log return (new)
-    "CLRET5": "Log($close/Ref($close, 5))",                     # 5d log return (new)
-    "CLRET10": "Log($close/Ref($close, 10))",                   # 10d log return (new)
-    "CLRET21": "Log($close/Ref($close, 21))",                   # 21d log return (new)
-
-    # --- Moving Average (shorter windows for crypto) ---
-    "CMA3": "Mean($close, 3)/$close",
-    "CMA5": "Mean($close, 5)/$close",
-    "CMA10": "Mean($close, 10)/$close",
-    "CMA15": "Mean($close, 15)/$close",
-    "CMA21": "Mean($close, 21)/$close",
-
-    # --- Volatility (shorter + log returns) ---
-    "CSTD3": "Std($close, 3)/$close",
-    "CSTD5": "Std($close, 5)/$close",
-    "CSTD10": "Std($close, 10)/$close",
-    "CSTD15": "Std($close, 15)/$close",
-    "CSTD21": "Std($close, 21)/$close",
-    "CLSTD5": "Std(Log($close/Ref($close,1)), 5)",              # Log-return volatility (new)
-    "CLSTD10": "Std(Log($close/Ref($close,1)), 10)",            # Log-return volatility (new)
-    "CLSTD21": "Std(Log($close/Ref($close,1)), 21)",            # Log-return volatility (new)
-
-    # --- Trend Strength (R-squared from linear regression) ---
-    "CRSQR5": "Rsquare($close, 5)",
-    "CRSQR10": "Rsquare($close, 10)",
-    "CRSQR15": "Rsquare($close, 15)",
-    "CRSQR21": "Rsquare($close, 21)",
-
-    # --- Price Extremes (shorter windows) ---
-    "CMAX5": "Max($high, 5)/$close",
-    "CMAX10": "Max($high, 10)/$close",
-    "CMAX15": "Max($high, 15)/$close",
-    "CMAX21": "Max($high, 21)/$close",
-    "CMIN5": "Min($low, 5)/$close",
-    "CMIN10": "Min($low, 10)/$close",
-    "CMIN15": "Min($low, 15)/$close",
-    "CMIN21": "Min($low, 21)/$close",
-
-    # --- RSV / Stochastic (shorter) ---
-    "CRSV5": "($close-Min($low, 5))/(Max($high, 5)-Min($low, 5)+1e-12)",
-    "CRSV10": "($close-Min($low, 10))/(Max($high, 10)-Min($low, 10)+1e-12)",
-    "CRSV21": "($close-Min($low, 21))/(Max($high, 21)-Min($low, 21)+1e-12)",
-
-    # --- Volume Correlation (Log scale for crypto's extreme ranges) ---
-    "CCORR5": "Corr(Log($close), Log($volume+1), 5)",           # Log-log correlation (new, better for crypto)
-    "CCORR10": "Corr(Log($close), Log($volume+1), 10)",
-    "CCORR21": "Corr(Log($close), Log($volume+1), 21)",
-    "CCORD5": "Corr(Log($close/Ref($close,1)), Log($volume/Ref($volume,1)+1), 5)",  # Log-return x volume-change
-    "CCORD10": "Corr(Log($close/Ref($close,1)), Log($volume/Ref($volume,1)+1), 10)",
-    "CCORD21": "Corr(Log($close/Ref($close,1)), Log($volume/Ref($volume,1)+1), 21)",
-
-    # --- Volume (Log scale) ---
-    "CVMA5": "Log(Mean($volume, 5))/(Log($volume)+1e-12)",      # Log volume ratio (new)
-    "CVMA10": "Log(Mean($volume, 10))/(Log($volume)+1e-12)",
-    "CVMA21": "Log(Mean($volume, 21))/(Log($volume)+1e-12)",
-    "CVSTD5": "Std(Log($volume), 5)",                           # Log-vol volatility (new)
-    "CVSTD10": "Std(Log($volume), 10)",
-    "CVSTD21": "Std(Log($volume), 21)",
-
-    # --- Volume Change Direction ---
-    "CVOLCH5": "Log($volume/Ref($volume,5))",                   # 5d volume change (log ratio)
-    "CVOLCH10": "Log($volume/Ref($volume,10))",                 # 10d volume change
-    "CVOLCH21": "Log($volume/Ref($volume,21))",                 # 21d volume change
-
-    # --- Up/Down Days Count ---
-    "CCNTP5": "Mean($close>Ref($close, 1), 5)",                 # Same as CNTP
-    "CCNTP10": "Mean($close>Ref($close, 1), 10)",
-    "CCNTP21": "Mean($close>Ref($close, 1), 21)",
-    "CCNTD5": "Mean($close>Ref($close, 1), 5)-Mean($close<Ref($close, 1), 5)",  # Net up ratio
-    "CCNTD10": "Mean($close>Ref($close, 1), 10)-Mean($close<Ref($close, 1), 10)",
-    "CCNTD21": "Mean($close>Ref($close, 1), 21)-Mean($close<Ref($close, 1), 21)",
-
-    # --- Price-Volume Interaction ---
-    "CPVVOL5": "Corr($close, $volume, 5)",                      # Raw price-volume corr (no Log, for comparison)
-    "CPVVOL10": "Corr($close, $volume, 10)",
-    "CPVVOL21": "Corr($close, $volume, 21)",
-}
-
-# Default 25 crypto factors used as base features
-CRYPTO_20 = {
-    # K-line patterns (4)
-    "CKLEN": "($high-$low)/$open",
-    "CPOS": "(2*$close-$high-$low)/($high-$low+1e-12)",
-    "COPEN0": "$open/$close",
-    "CKUP": "($high-Greater($open, $close))/$open",
-
-    # Momentum (4)
-    "CROC5": "Ref($close, 5)/$close",
-    "CROC10": "Ref($close, 10)/$close",
-    "CROC21": "Ref($close, 21)/$close",
-    "CLRET10": "Log($close/Ref($close, 10))",
-
-    # Volatility (4)
-    "CSTD10": "Std($close, 10)/$close",
-    "CLSTD10": "Std(Log($close/Ref($close,1)), 10)",
-    "CRSQR10": "Rsquare($close, 10)",
-    "CRSV10": "($close-Min($low, 10))/(Max($high, 10)-Min($low, 10)+1e-12)",
-
-    # Volume (5)
-    "CCORR10": "Corr(Log($close), Log($volume+1), 10)",
-    "CCORD10": "Corr(Log($close/Ref($close,1)), Log($volume/Ref($volume,1)+1), 10)",
-    "CVMA10": "Log(Mean($volume, 10))/(Log($volume)+1e-12)",
-    "CVSTD10": "Std(Log($volume), 10)",
-    "CVOLCH10": "Log($volume/Ref($volume,10))",
-
-    # Trend/Risk (4)
-    "CMAX10": "Max($high, 10)/$close",
-    "CMIN10": "Min($low, 10)/$close",
-    "CCNTP5": "Mean($close>Ref($close, 1), 5)",
-    "CCNTD10": "Mean($close>Ref($close, 1), 10)-Mean($close<Ref($close, 1), 10)",
-
-    # Price-Volume (4)
-    "CPVVOL10": "Corr($close, $volume, 10)",
-    "CSTD5": "Std($close, 5)/$close",
-    "CKSFT": "(2*$close-$high-$low)/$open",
-    "CVSTD5": "Std(Log($volume), 5)",
-}
-
-# Select which factor set to use based on CRYPTO_MODE
-import os as _os
 if _os.environ.get("CRYPTO_MODE", "").lower() == "true":
     _BASE_FACTORS = CRYPTO_20
     _ALL_FACTORS = CRYPTO_ALPHA
@@ -352,16 +204,14 @@ else:
     _BASE_FACTORS = ALPHA20
     _ALL_FACTORS = ALPHA158
 
+
 def get_base_factors() -> dict:
-    """Return the base feature dict for the current market mode."""
     return dict(_BASE_FACTORS)
 
+
 def get_all_factors() -> dict:
-    """Return the full factor dict for the current market mode."""
     return dict(_ALL_FACTORS)
 
 
 def validate_qlib_features(expressions: list[str]) -> bool:
-    """Validate that Qlib expressions are computable (requires Qlib conda env)."""
-    # This is a stub; actual validation requires Qlib in a conda environment
     return True
