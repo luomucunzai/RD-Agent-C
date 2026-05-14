@@ -129,16 +129,16 @@ rdagent/utils/
 ## 数据流水线
 
 ```
-init_crypto_data.py  ← 一键全自动（新）
-  ├── downdata.py → 币安 CSV (OHLCV)
-  ├── generate_crypto.py → H5 (因子代码读取用)
-  │                        MultiIndex(datetime, instrument)
-  │                        6 columns: $open,$close,$high,$low,$volume,$factor(=1.0)
-  ├── convert_to_qlib_format.py → Qlib 原生格式 (回测引擎 qrun 用)
-  │                              calendars/day.txt
-  │                              features/{inst}/{field}.day.bin
-  │                              instruments/all.txt
-  └── 自动检测数据日期 → 更新 conf.py 时间配置
+downdata.py → 币安 CSV (OHLCV)
+    ↓
+generate_crypto.py → H5 (因子代码读取用)
+                     MultiIndex(datetime, instrument)
+                     6 columns: $open,$close,$high,$low,$volume,$factor(=1.0)
+    ↓
+convert_to_qlib_format.py → Qlib 原生格式 (回测引擎 qrun 用)
+                            calendars/day.txt
+                            features/{inst}/{field}.day.bin
+                            instruments/all.txt
 ```
 
 ### Qlib 0.9.7 `cn_data` 目录结构

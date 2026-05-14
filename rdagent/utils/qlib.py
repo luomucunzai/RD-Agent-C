@@ -195,9 +195,17 @@ ALPHA158 = {
     "VSUMD60": "(Sum(Greater($volume-Ref($volume, 1), 0), 60)-Sum(Greater(Ref($volume, 1)-$volume, 0), 60))/(Sum(Abs($volume-Ref($volume, 1)), 60)+1e-12)",
 }
 
-from rdagent.utils.crypto_alpha import CRYPTO_20, CRYPTO_ALPHA
+_CRYPTO_1H = _os.environ.get("CRYPTO_1H", "").lower() == "true"
 
-if _os.environ.get("CRYPTO_MODE", "").lower() == "true":
+if _CRYPTO_1H:
+    from rdagent.utils.crypto_alpha_1h import CRYPTO_20, CRYPTO_ALPHA
+elif _os.environ.get("CRYPTO_MODE", "").lower() == "true":
+    from rdagent.utils.crypto_alpha import CRYPTO_20, CRYPTO_ALPHA
+else:
+    CRYPTO_20 = ALPHA20
+    CRYPTO_ALPHA = ALPHA158
+
+if _CRYPTO_1H or _os.environ.get("CRYPTO_MODE", "").lower() == "true":
     _BASE_FACTORS = CRYPTO_20
     _ALL_FACTORS = CRYPTO_ALPHA
 else:

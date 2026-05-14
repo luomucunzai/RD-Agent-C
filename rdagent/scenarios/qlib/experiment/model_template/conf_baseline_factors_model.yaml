@@ -17,7 +17,7 @@ data_handler_config: &data_handler_config
                   kwargs:
                     config:
                         label:
-                            - ["Ref($close, -2)/Ref($close, -1) - 1"]
+                            - ["{{ label_expression | default("Ref($close, -2)/Ref($close, -1) - 1") }}"]
                             - ["LABEL0"]
                         feature:
                             - {{ feature_expressions }}
