@@ -10,13 +10,16 @@ from rdagent.components.workflow.conf import BasePropSetting
 _CRYPTO_MODE = os.environ.get("CRYPTO_MODE", "").lower() == "true"
 
 if _CRYPTO_MODE:
-    # 1H→假日期模式：17204 天/交易对 (2000-01-01 ~ 2047-02-06)
+    # 1H→假日期模式：17203 天 (2000-01-01 ~ 2047-02-05)
+    # train(0~40%): 2000-01-01 ~ 2018-11-01
+    # valid(40~70%): 2018-11-02 ~ 2032-12-16
+    # test(70~100%): 2032-12-17 ~ 2047-02-03
     _DEFAULT_TRAIN_START = "2000-01-01"
-    _DEFAULT_TRAIN_END = "2018-11-02"
-    _DEFAULT_VALID_START = "2018-11-03"
-    _DEFAULT_VALID_END = "2032-12-17"
-    _DEFAULT_TEST_START = "2032-12-18"
-    _DEFAULT_TEST_END = "2047-02-04"
+    _DEFAULT_TRAIN_END = "2018-11-01"
+    _DEFAULT_VALID_START = "2018-11-02"
+    _DEFAULT_VALID_END = "2032-12-16"
+    _DEFAULT_TEST_START = "2032-12-17"
+    _DEFAULT_TEST_END = "2047-02-03"
 else:
     _DEFAULT_TRAIN_START = "2008-01-01"
     _DEFAULT_TRAIN_END = "2014-12-31"
