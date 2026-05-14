@@ -91,7 +91,7 @@
                   }"
                 >
                   <div class="tab-bg">
-                    <span @click="tabChange(0)">Research</span>
+                    <span @click="tabChange(0)">研究</span>
                   </div>
                 </li>
                 <li
@@ -115,7 +115,7 @@
                             currentData.evolvingFeedbacks.length !== 0)) &&
                           tabChange(1)
                       "
-                      >Development</span
+                      >开发</span
                     >
                     <img
                       v-if="
@@ -146,7 +146,7 @@
                           (currentData && currentData.feedbackHypothesis)) &&
                           tabChange(2)
                       "
-                      >Feedback</span
+                      >反馈</span
                     >
                     <img
                       v-if="
@@ -183,7 +183,7 @@
                   }"
                 >
                   <div class="tab-bg">
-                    <span @click="tabChange(0)">Research</span>
+                    <span @click="tabChange(0)">研究</span>
                   </div>
                 </li>
                 <li

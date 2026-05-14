@@ -368,7 +368,19 @@ def report_figure(df: pd.DataFrame) -> list | tuple:
     _temp_df.iloc[0] = 0
     report_df = _temp_df
 
-    # Create figure
+    # Create figure with Chinese labels
+    _NAME_CN = {
+        "cum_bench": "累计基准收益",
+        "cum_return_wo_cost": "累计策略收益(无费用)",
+        "cum_return_w_cost": "累计策略收益(含费用)",
+        "return_wo_mdd": "策略回撤(无费用)",
+        "return_w_cost_mdd": "策略回撤(含费用)",
+        "cum_ex_return_wo_cost": "累计超额收益(无费用)",
+        "cum_ex_return_w_cost": "累计超额收益(含费用)",
+        "turnover": "换手率",
+        "cum_ex_return_w_cost_mdd": "超额收益回撤(含费用)",
+        "cum_ex_return_wo_cost_mdd": "超额收益回撤(无费用)",
+    }
     _default_kind_map = dict(kind="Scatter", kwargs={"mode": "lines+markers"})
     _temp_fill_args = {"fill": "tozeroy", "mode": "lines+markers"}
     _column_row_col_dict = [
@@ -383,6 +395,8 @@ def report_figure(df: pd.DataFrame) -> list | tuple:
         ("cum_ex_return_w_cost_mdd", dict(row=6, col=1, graph_kwargs=_temp_fill_args)),
         ("cum_ex_return_wo_cost_mdd", dict(row=7, col=1, graph_kwargs=_temp_fill_args)),
     ]
+    report_df = report_df.rename(columns=_NAME_CN)
+    _column_row_col_dict = [(_NAME_CN.get(c, c), v) for c, v in _column_row_col_dict]
 
     _subplot_layout = dict()
     for i in range(1, 8):

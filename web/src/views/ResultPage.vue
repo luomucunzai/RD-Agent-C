@@ -7,7 +7,7 @@
           @change="switchChange"
           style="--el-switch-on-color: #8749ff; --el-switch-off-color: #c9d0fc"
         />
-        <span>Successful Hypotheses</span>
+        <span>成功的假设</span>
       </div>
       <div class="download-btn-item" @click="downloadLogs">
         <span class="download-icon"></span>
@@ -20,12 +20,12 @@
     </div>
     <div class="bg-content">
       <div class="result-content">
-        <h2>Metrics</h2>
+        <h2>指标</h2>
         <div>
           <chartBox :metricData="metricData"></chartBox>
         </div>
         <div class="section-title-row">
-          <h2>Summary</h2>
+          <h2>摘要</h2>
           <div class="trace-name-chip" v-if="traceName">{{ traceName }}</div>
         </div>
         <div class="table-box">
@@ -45,7 +45,7 @@
             </el-table-column>
 
             <el-table-column
-              label="Component"
+              label="组件"
               width="200"
               prop="component"
               v-if="scenarioName == 'Data Science'"

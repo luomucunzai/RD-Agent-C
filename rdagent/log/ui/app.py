@@ -80,7 +80,10 @@ def filter_log_folders(main_log_path):
 
 if "log_path" not in state:
     if main_log_path:
-        state.log_path = filter_log_folders(main_log_path)[0]
+        folders = filter_log_folders(main_log_path)
+        # Prefer the last folder (most recent) that has a __session__ marker
+        valid = [f for f in folders if (main_log_path / f / "__session__").exists()]
+        state.log_path = (valid[-1] if valid else folders[0]) if folders else None
     else:
         state.log_path = None
         st.toast(":red[**Please Set Log Path!**]", icon="⚠️")
@@ -127,6 +130,11 @@ if "all_metric_series" not in state:
 if "alpha_baseline_metrics" not in state:
     state.alpha_baseline_metrics = None
 
+
+if "excluded_tags" not in state:
+    state.excluded_tags = ["llm_messages"]
+if "excluded_types" not in state:
+    state.excluded_types = ["str"]
 
 def should_display(msg: Message):
     for t in state.excluded_tags + ["debug_tpl", "debug_llm"]:
