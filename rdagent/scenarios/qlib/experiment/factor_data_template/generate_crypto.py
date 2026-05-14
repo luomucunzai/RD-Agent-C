@@ -50,11 +50,19 @@ def load_binance_csv(csv_path: str) -> pd.DataFrame | None:
         # Unix timestamp in ms
         df[time_col] = pd.to_datetime(df[time_col], unit="ms")
 
-    # Make a local time column (normalize to date for daily frequency)
-    df["_date"] = df[time_col].dt.tz_localize(None).dt.normalize()
+    # Detect if hourly data (first 2 rows within 2 hours)
+    time_vals = df[time_col].sort_values()
+    is_hourly = len(time_vals) > 1 and (time_vals.iloc[1] - time_vals.iloc[0]).total_seconds() < 7200
 
-    # Remove duplicates and sort
-    df = df.drop_duplicates(subset=["_date"]).sort_values("_date")
+    if is_hourly:
+        # 1H数据：每根K线映射到一个假日期（2000-01-01 + N天）
+        df = df.sort_values(time_col).reset_index(drop=True)
+        fake_start = pd.Timestamp("2000-01-01")
+        df["_date"] = [fake_start + pd.Timedelta(days=i) for i in range(len(df))]
+    else:
+        # 日线数据：归一化到午夜，去重
+        df["_date"] = df[time_col].dt.tz_localize(None).dt.normalize()
+        df = df.drop_duplicates(subset=["_date"]).sort_values("_date")
 
     # Extract symbol from filename
     symbol = Path(csv_path).stem

@@ -91,7 +91,7 @@ class QlibFactorRunner(CachedRunner[QlibFactorExperiment]):
             env_to_use.update({
                 "market": os.environ.get("CRYPTO_MARKET", "all"),
                 "benchmark": os.environ.get("CRYPTO_BENCHMARK", "BTCUSDT"),
-                "ann_scaler": os.environ.get("CRYPTO_ANN_SCALER", "365"),
+                "ann_scaler": os.environ.get("CRYPTO_ANN_SCALER", "8760"),  # 24h×365d for 1H data
                 "topk": os.environ.get("CRYPTO_TOPK", "10"),
                 "account": os.environ.get("CRYPTO_ACCOUNT", "10000"),
                 "limit_threshold": "1.0",  # no price limits for crypto (100% = no limit)
